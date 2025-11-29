@@ -2,25 +2,32 @@
 
 基于 FastAPI 的资金费率套利监控工具，聚合 Binance / OKX / zkLighter / GRVT 的永续合约资金费率，统一为 8h 口径，计算多空最大价差并排序，通过 REST API 和一个简洁的前端展示。
 
-## 一键部署（Linux + systemd）
+## 一行部署（全新服务器）
 
-仓库内附带 `deploy.sh`，在服务器仓库根目录直接执行即可跑起来：
+直接在新服务器执行一行命令完成克隆 + 安装依赖 + systemd 运行。请把 `<REPO_URL>` 换成你的仓库地址（https/ssh 均可）：
 
 ```bash
-sudo bash deploy.sh
+bash -c "git clone <REPO_URL> funding && cd funding && sudo APP_USER=$(whoami) bash deploy.sh"
 ```
 
-可选环境变量（执行前导出）：
+如果服务器还没有安装 git，可以用这一行（自动检测 apt/dnf/yum）：
 
-- `APP_NAME`：systemd 服务名，默认 `funding-monitor`
-- `PORT`：监听端口，默认 `8000`
-- `HOST`：监听地址，默认 `0.0.0.0`
-- `WORKERS`：uvicorn worker 数，默认 `1`
-- `APP_DIR`：项目路径，默认当前目录
-- `APP_USER`：运行用户，默认当前用户
-- `VENV_PATH`：虚拟环境路径，默认 `<APP_DIR>/.venv`
+```bash
+bash -c "pm=$(command -v apt-get || command -v dnf || command -v yum); if [ -n \"$pm\" ]; then sudo $pm update -y >/dev/null 2>&1 || true; sudo $pm install -y git; fi; git clone <REPO_URL> funding && cd funding && sudo APP_USER=$(whoami) bash deploy.sh"
+```
 
-部署完成后可通过 `systemctl status APP_NAME.service` 查看状态，访问 `http://HOST:PORT/` 打开前端。
+说明：
+- `deploy.sh` 会自动用 apt/dnf/yum 安装 python3/pip/git/systemd（需要 sudo 权限）。
+- 默认监听 `0.0.0.0:8000`，服务名 `funding-monitor`，使用虚拟环境 `<APP_DIR>/.venv`。
+- 自定义参数可在一行命令前添加，例如：
+
+```bash
+APP_NAME=funding-prod PORT=9000 WORKERS=2 bash -c "git clone <REPO_URL> funding && cd funding && sudo APP_USER=$(whoami) bash deploy.sh"
+```
+
+部署完成后：
+- 查看状态：`systemctl status funding-monitor.service`
+- 访问前端：`http://服务器IP:端口/`
 
 ## 手动运行（开发/本地）
 

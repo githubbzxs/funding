@@ -4,25 +4,67 @@
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 APP_NAME="${APP_NAME:-funding-monitor}"
-APP_DIR="${APP_DIR:-$(pwd)}"
-APP_USER="${APP_USER:-$(whoami)}"
+APP_DIR="${APP_DIR:-$SCRIPT_DIR}"
+APP_USER="${APP_USER:-${SUDO_USER:-$(whoami)}}"
 PORT="${PORT:-8000}"
 HOST="${HOST:-0.0.0.0}"
 WORKERS="${WORKERS:-1}"
 VENV_PATH="${VENV_PATH:-$APP_DIR/.venv}"
 
-need_cmd() {
-  if ! command -v "$1" >/dev/null 2>&1; then
-    echo "Error: missing required command '$1'. Please install it and rerun." >&2
+pkg_install() {
+  if command -v apt-get >/dev/null 2>&1; then
+    apt-get update -y && apt-get install -y "$@"
+  elif command -v dnf >/dev/null 2>&1; then
+    dnf install -y "$@"
+  elif command -v yum >/dev/null 2>&1; then
+    yum install -y "$@"
+  else
+    echo "No supported package manager found (apt, dnf, yum)." >&2
     exit 1
   fi
 }
 
-echo "==> Checking prerequisites"
-need_cmd python3
-need_cmd pip
-need_cmd systemctl
+ensure_cmd() {
+  if ! command -v "$1" >/dev/null 2>&1; then
+    echo "==> Installing dependency '$1'"
+    case "$1" in
+      python3) pkg_install python3 ;;
+      pip|pip3) pkg_install python3-pip ;;
+      systemctl) pkg_install systemd ;;
+      git) pkg_install git ;;
+      *) pkg_install "$1" ;;
+    esac
+  fi
+}
+
+echo "==> Checking prerequisites (python3, pip, git, systemd)"
+ensure_cmd python3
+ensure_cmd pip3 || ensure_cmd pip
+ensure_cmd git
+ensure_cmd systemctl
+
+ensure_venv() {
+  if python3 -c "import venv" >/dev/null 2>&1; then
+    return
+  fi
+  echo "==> Installing python3 venv support"
+  set +e
+  if command -v apt-get >/dev/null 2>&1; then
+    apt-get update -y && apt-get install -y python3-venv
+  elif command -v dnf >/dev/null 2>&1; then
+    dnf install -y python3-virtualenv || dnf install -y python3-venv
+  elif command -v yum >/dev/null 2>&1; then
+    yum install -y python3-virtualenv || yum install -y python3-venv
+  else
+    echo "No supported package manager found for python venv." >&2
+    exit 1
+  fi
+  set -e
+}
+
+ensure_venv
 
 echo "==> Creating virtual environment at $VENV_PATH"
 python3 -m venv "$VENV_PATH"
