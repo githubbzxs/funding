@@ -28,6 +28,7 @@ APP_NAME=funding-prod PORT=9000 WORKERS=2 bash -c "git clone <REPO_URL> funding 
 部署完成后：
 - 查看状态：`systemctl status funding-monitor.service`
 - 访问前端：`http://服务器IP:端口/`
+- 如果提示 “ensurepip is not available” 或建议安装 `python3.x-venv`，在 Debian/Ubuntu 上执行：`sudo apt-get update -y && sudo apt-get install -y python3-venv python3.<版本>-venv`，然后重新运行一行部署命令。脚本已自动尝试安装，但极少数精简镜像可能仍需手动确认。
 
 ## 手动运行（开发/本地）
 

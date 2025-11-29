@@ -46,17 +46,24 @@ ensure_cmd git
 ensure_cmd systemctl
 
 ensure_venv() {
-  if python3 -c "import venv" >/dev/null 2>&1; then
+  if python3 - <<'PY' >/dev/null 2>&1; then
+import venv, ensurepip  # noqa: F401
+PY
+  then
     return
   fi
-  echo "==> Installing python3 venv support"
+  echo "==> Installing python3 venv/ensurepip support"
+  pyver="$(python3 -c 'import sys; print(f\"{sys.version_info.major}.{sys.version_info.minor}\")' || echo '3')"
   set +e
   if command -v apt-get >/dev/null 2>&1; then
-    apt-get update -y && apt-get install -y python3-venv
+    apt-get update -y
+    apt-get install -y python3-venv "python${pyver}-venv" python3-pip
   elif command -v dnf >/dev/null 2>&1; then
-    dnf install -y python3-virtualenv || dnf install -y python3-venv
+    dnf install -y python3-virtualenv python3-pip || true
+    dnf install -y python3-venv || true
   elif command -v yum >/dev/null 2>&1; then
-    yum install -y python3-virtualenv || yum install -y python3-venv
+    yum install -y python3-virtualenv python3-pip || true
+    yum install -y python3-venv || true
   else
     echo "No supported package manager found for python venv." >&2
     exit 1
@@ -68,6 +75,10 @@ ensure_venv
 
 echo "==> Creating virtual environment at $VENV_PATH"
 python3 -m venv "$VENV_PATH"
+# shellcheck source=/dev/null
+if ! "$VENV_PATH/bin/python" -m ensurepip --upgrade >/dev/null 2>&1; then
+  echo "Warning: ensurepip inside venv failed; pip may already be present."
+fi
 # shellcheck source=/dev/null
 source "$VENV_PATH/bin/activate"
 pip install --upgrade pip
