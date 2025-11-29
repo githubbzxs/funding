@@ -4,16 +4,16 @@
 
 ## 一行部署（全新服务器）
 
-直接在新服务器执行一行命令完成克隆 + 安装依赖 + systemd 运行。请把 `<REPO_URL>` 换成你的仓库地址（https/ssh 均可）：
+直接在新服务器执行一行命令完成克隆 + 安装依赖 + systemd 运行：
 
 ```bash
-bash -c "git clone <REPO_URL> funding && cd funding && sudo APP_USER=$(whoami) bash deploy.sh"
+bash -c "git clone https://github.com/githubbzxs/funding funding && cd funding && sudo APP_USER=$(whoami) bash deploy.sh"
 ```
 
 如果服务器还没有安装 git，可以用这一行（自动检测 apt/dnf/yum）：
 
 ```bash
-bash -c "pm=$(command -v apt-get || command -v dnf || command -v yum); if [ -n \"$pm\" ]; then sudo $pm update -y >/dev/null 2>&1 || true; sudo $pm install -y git; fi; git clone <REPO_URL> funding && cd funding && sudo APP_USER=$(whoami) bash deploy.sh"
+bash -c "pm=$(command -v apt-get || command -v dnf || command -v yum); if [ -n \"$pm\" ]; then sudo $pm update -y >/dev/null 2>&1 || true; sudo $pm install -y git; fi; git clone https://github.com/githubbzxs/funding funding && cd funding && sudo APP_USER=$(whoami) bash deploy.sh"
 ```
 
 说明：
