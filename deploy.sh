@@ -49,7 +49,6 @@ ensure_venv() {
   if python3 - <<'PY' >/dev/null 2>&1; then
 import venv, ensurepip  # noqa: F401
 PY
-  then
     return
   fi
   echo "==> Installing python3 venv/ensurepip support"
