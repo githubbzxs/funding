@@ -1,0 +1,66 @@
+import logging
+import time
+from dataclasses import asdict
+from typing import Any, Dict
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
+
+from core.aggregator import build_ranking, collect_all
+from core.models import FundingDiffRow
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+REFRESH_INTERVAL = 30  # seconds
+
+CACHE: Dict[str, Any] = {"timestamp": 0.0, "rows": []}
+
+app = FastAPI(title="Funding Arbitrage Monitor", version="0.1.0")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+
+async def _refresh_cache() -> list[FundingDiffRow]:
+    items = await collect_all()
+    rows = build_ranking(items)
+    CACHE["timestamp"] = time.time()
+    CACHE["rows"] = rows
+    return rows
+
+
+@app.get("/api/funding/ranking")
+async def get_funding_ranking() -> dict:
+    """
+    Return funding rate arbitrage ranking, refreshing periodically.
+    """
+    now = time.time()
+    cached_rows = CACHE.get("rows", [])
+    timestamp = CACHE.get("timestamp", 0.0)
+    if cached_rows and (now - timestamp) < REFRESH_INTERVAL:
+        rows = cached_rows
+    else:
+        try:
+            rows = await _refresh_cache()
+        except Exception as exc:
+            logger.exception("Failed to refresh funding data: %s", exc)
+            rows = cached_rows or []
+
+    serialized = [asdict(row) for row in rows]
+    return {"updated_at": CACHE.get("timestamp", now), "rows": serialized}
+
+
+@app.get("/", include_in_schema=False)
+async def read_root() -> FileResponse:
+    """Serve the minimal frontend."""
+    return FileResponse("static/index.html")
