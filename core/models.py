@@ -11,7 +11,6 @@ ExchangeName = Literal[
     "BITGET",
     "ASTER",
     "BACKPACK",
-    "EDGEX",
 ]
 
 

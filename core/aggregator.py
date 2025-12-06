@@ -15,7 +15,6 @@ from exchanges.bybit import fetch_bybit_funding
 from exchanges.bitget import fetch_bitget_funding
 from exchanges.aster import fetch_aster_funding
 from exchanges.backpack import fetch_backpack_funding
-from exchanges.edgex import fetch_edgex_funding
 
 logger = logging.getLogger(__name__)
 DEFAULT_LEVERAGE = 50.0  # fallback when no leverage info is available
@@ -36,7 +35,6 @@ async def collect_all() -> list[FundingRateItem]:
         fetch_bitget_funding(),
         fetch_aster_funding(),
         fetch_backpack_funding(),
-        fetch_edgex_funding(),
     ]
     results = await asyncio.gather(*tasks, return_exceptions=True)
 
