@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 REFRESH_INTERVAL = 30  # seconds
 
 CACHE: Dict[str, Any] = {"timestamp": 0.0, "rows": []}
+HISTORY: Dict[str, list[dict]] = {}
 
 app = FastAPI(title="Funding Arbitrage Monitor", version="0.1.0")
 
@@ -34,8 +35,25 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 async def _refresh_cache() -> list[FundingDiffRow]:
     items = await collect_all()
     rows = build_ranking(items)
-    CACHE["timestamp"] = time.time()
+    now = time.time()
+    CACHE["timestamp"] = now
     CACHE["rows"] = rows
+    # append to in-memory history
+    for row in rows:
+        hist = HISTORY.setdefault(row.unified_symbol, [])
+        hist.append(
+            {
+                "ts": now,
+                "diff": row.diff,
+                "nominal": row.nominal_spread or row.nominal_funding_max_leverage,
+                "max_rate": row.max_rate,
+                "min_rate": row.min_rate,
+                "max_ex": row.max_rate_exchange,
+                "min_ex": row.min_rate_exchange,
+            }
+        )
+        if len(hist) > 200:
+            del hist[:-200]
     return rows
 
 
@@ -58,6 +76,15 @@ async def get_funding_ranking() -> dict:
 
     serialized = [asdict(row) for row in rows]
     return {"updated_at": CACHE.get("timestamp", now), "rows": serialized}
+
+
+@app.get("/api/funding/history")
+async def get_funding_history(symbol: str) -> dict:
+    """
+    Return recent funding history for a symbol collected in memory.
+    """
+    history = HISTORY.get(symbol, [])
+    return {"symbol": symbol, "history": history}
 
 
 @app.get("/", include_in_schema=False)

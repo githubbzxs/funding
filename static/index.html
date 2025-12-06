@@ -163,6 +163,12 @@
       accent-color: #00c897;
       cursor: pointer;
     }
+    .tables-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 14px;
+      margin-top: 10px;
+    }
     .table-shell {
       background: transparent;
       border-radius: 16px;
@@ -192,7 +198,7 @@
     table {
       width: 100%;
       border-collapse: collapse;
-      min-width: 960px;
+      min-width: 320px;
     }
     th, td {
       padding: 12px 14px;
@@ -409,24 +415,48 @@
       <div id="exchangeFilters" aria-label="交易所筛选"></div>
     </div>
 
-    <div class="table-shell">
-      <div class="table-headline">
-        <div class="title">费率差列表</div>
-        <div class="hint">8 小时资金费率绝对值排序</div>
+    <div class="tables-grid">
+      <div class="table-shell">
+        <div class="table-headline">
+          <div class="title">正费率差</div>
+          <div class="hint">8 小时资金费率差 ≥ 0</div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>合约</th>
+                <th>实际费率差（8h）</th>
+                <th>名义费率差 ($)</th>
+                <th>预估 APR (%)</th>
+              </tr>
+            </thead>
+            <tbody id="tableBodyPos">
+              <tr><td class="empty" colspan="8">加载中...</td></tr>
+            </tbody>
+          </table>
+        </div>
       </div>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>合约</th>
-              <th>实际费率差（8h）</th>
-              <th>名义费率差 ($)</th>
-            </tr>
-          </thead>
-          <tbody id="tableBody">
-            <tr><td class="empty" colspan="8">加载中...</td></tr>
-          </tbody>
-        </table>
+      <div class="table-shell">
+        <div class="table-headline">
+          <div class="title">负费率差</div>
+          <div class="hint">8 小时资金费率差 < 0</div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>合约</th>
+                <th>实际费率差（8h）</th>
+                <th>名义费率差 ($)</th>
+                <th>预估 APR (%)</th>
+              </tr>
+            </thead>
+            <tbody id="tableBodyNeg">
+              <tr><td class="empty" colspan="8">加载中...</td></tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
 
@@ -492,7 +522,8 @@
   </div>
 
   <script>
-    const tableBody = document.getElementById('tableBody');
+    const tableBodyPos = document.getElementById('tableBodyPos');
+    const tableBodyNeg = document.getElementById('tableBodyNeg');
     const updatedAtEl = document.getElementById('updatedAt');
     const refreshChip = document.getElementById('refreshChip');
     const manualRefreshBtn = document.getElementById('manualRefresh');
@@ -577,28 +608,23 @@
     function renderRows(rows) {
       const filtered = filterRows(rows);
       if (!rows.length) {
-        tableBody.innerHTML = '<tr><td class="empty" colspan="8">暂无数据。</td></tr>';
-        return;
-      }
-
-      if (!filtered.length) {
-        tableBody.innerHTML = '<tr><td class="empty" colspan="8">所选交易所暂无可显示数据。</td></tr>';
+        tableBodyPos.innerHTML = '<tr><td class="empty" colspan="8">暂无数据。</td></tr>';
+        tableBodyNeg.innerHTML = '<tr><td class="empty" colspan="8">暂无数据。</td></tr>';
         return;
       }
 
       const maxDiff = Math.max(...filtered.map(r => Math.abs(r.diff || 0)), 0.000001);
-      const frag = document.createDocumentFragment();
+      const fragPos = document.createDocumentFragment();
+      const fragNeg = document.createDocumentFragment();
 
-      for (const row of filtered) {
+      const buildRow = (row) => {
         const diff = row.diff ?? 0;
         const leverageUsed = row.leverage_used ?? 50;
         const nominal = row.nominal_spread ?? row.nominal_funding_max_leverage ?? (diff * leverageUsed);
-        const longRateClass = row.max_rate >= 0 ? 'rate-pos' : 'rate-neg';
-        const shortRateClass = row.min_rate >= 0 ? 'rate-pos' : 'rate-neg';
+        const apr = diff * 3 * 365 * 100;
         const barWidth = Math.min(100, Math.max(6, (Math.abs(diff) / maxDiff) * 100));
         const { base, rest } = formatSymbol(row.unified_symbol);
         const restDisplay = rest ? ` / ${rest}` : '';
-        const tokenLetter = (base || '?').slice(0, 3).toUpperCase();
         const tr = document.createElement('tr');
         tr.classList.add('clickable-row');
         tr.innerHTML = `
@@ -617,23 +643,39 @@
             </div>
           </td>
           <td class="numeric"><span class="nominal-highlight">$${numberFormatter.format(nominal)}</span></td>
+          <td class="numeric">${apr.toFixed(2)}</td>
         `;
         tr.addEventListener('click', () => {
           const url = `/static/detail.html?symbol=${encodeURIComponent(row.unified_symbol)}`;
           window.open(url, '_blank');
         });
-        frag.appendChild(tr);
+        return tr;
+      };
+
+      const posRows = filtered.filter(r => (r.diff ?? 0) >= 0);
+      const negRows = filtered.filter(r => (r.diff ?? 0) < 0);
+
+      posRows.forEach(r => fragPos.appendChild(buildRow(r)));
+      negRows.forEach(r => fragNeg.appendChild(buildRow(r)));
+
+      if (posRows.length === 0) {
+        tableBodyPos.innerHTML = '<tr><td class="empty" colspan="8">暂无数据。</td></tr>';
+      } else {
+        tableBodyPos.innerHTML = '';
+        tableBodyPos.appendChild(fragPos);
       }
-      tableBody.innerHTML = '';
-      tableBody.appendChild(frag);
+      if (negRows.length === 0) {
+        tableBodyNeg.innerHTML = '<tr><td class="empty" colspan="8">暂无数据。</td></tr>';
+      } else {
+        tableBodyNeg.innerHTML = '';
+        tableBodyNeg.appendChild(fragNeg);
+      }
     }
 
     async function loadData(isManual = false) {
-      if (isManual) {
-        tableBody.innerHTML = '<tr><td class="empty" colspan="8">手动刷新中...</td></tr>';
-      } else {
-        tableBody.innerHTML = '<tr><td class="empty" colspan="8">加载中...</td></tr>';
-      }
+      const msg = isManual ? '手动刷新中...' : '加载中...';
+      tableBodyPos.innerHTML = `<tr><td class="empty" colspan="8">${msg}</td></tr>`;
+      tableBodyNeg.innerHTML = `<tr><td class="empty" colspan="8">${msg}</td></tr>`;
       try {
         const res = await fetch('/api/funding/ranking');
         const data = await res.json();
@@ -647,7 +689,8 @@
         renderRows(rows);
       } catch (err) {
         console.error(err);
-        tableBody.innerHTML = '<tr><td class="empty" colspan="8">加载失败。</td></tr>';
+        tableBodyPos.innerHTML = '<tr><td class="empty" colspan="8">加载失败。</td></tr>';
+        tableBodyNeg.innerHTML = '<tr><td class="empty" colspan="8">加载失败。</td></tr>';
         updatedAtEl.textContent = '更新失败';
       }
     }
