@@ -5,7 +5,7 @@ import httpx
 
 from core.models import FundingRateItem
 
-BITGET_TICKERS_URL = "https://api.bitget.com/api/mix/v1/market/tickers"
+BITGET_TICKERS_URL = "https://api.bitget.com/api/v2/mix/market/tickers"
 REQUEST_TIMEOUT = 10.0
 BITGET_DEFAULT_LEVERAGE = 50.0
 ENABLE_BITGET = True
@@ -15,15 +15,24 @@ logger = logging.getLogger(__name__)
 
 def _bitget_symbol_to_unified(symbol: str) -> Optional[str]:
     """
-    Convert Bitget symbol like BTCUSDT_UMCBL to BTC-USDT-PERP.
+    Convert Bitget symbol (new v2 format BTCUSDT or legacy BTCUSDT_UMCBL) to BTC-USDT-PERP.
     """
-    if not symbol.endswith("_UMCBL"):
+    if not symbol:
         return None
-    base_quote = symbol.replace("_UMCBL", "")
-    if not base_quote.endswith("USDT"):
-        return None
-    base = base_quote[:-4]
-    if not base:
+
+    base = ""
+    quote = ""
+    if symbol.endswith("_UMCBL"):
+        base_quote = symbol.replace("_UMCBL", "")
+        if base_quote.endswith("USDT"):
+            base = base_quote[:-4]
+            quote = "USDT"
+    else:
+        if symbol.endswith("USDT"):
+            base = symbol[:-4]
+            quote = "USDT"
+
+    if not base or quote != "USDT":
         return None
     return f"{base}-USDT-PERP"
 
@@ -44,7 +53,7 @@ async def fetch_bitget_funding() -> List[FundingRateItem]:
 
     logger.info("Fetching Bitget funding rates")
     items: List[FundingRateItem] = []
-    params = {"productType": "umcbl"}
+    params = {"productType": "USDT-FUTURES"}
     try:
         async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
             resp = await client.get(BITGET_TICKERS_URL, params=params)
@@ -52,6 +61,10 @@ async def fetch_bitget_funding() -> List[FundingRateItem]:
             payload = resp.json()
     except Exception as exc:
         logger.warning("Failed to fetch Bitget funding rates: %s", exc)
+        return items
+
+    if (payload or {}).get("code") not in ("00000", "0", 0, None):
+        logger.warning("Unexpected Bitget status code: %s", payload.get("code"))
         return items
 
     rows = (payload or {}).get("data") or []
@@ -68,7 +81,7 @@ async def fetch_bitget_funding() -> List[FundingRateItem]:
             raw_rate = float(row.get("fundingRate", "0"))
         except (TypeError, ValueError):
             continue
-        next_time = _to_int_safe(row.get("nextFundingTime") or row.get("fundTime"))
+        next_time = _to_int_safe(row.get("nextFundingTime") or row.get("fundingTime") or row.get("fundTime"))
         items.append(
             FundingRateItem(
                 exchange="BITGET",
