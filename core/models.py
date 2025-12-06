@@ -1,7 +1,18 @@
 from dataclasses import dataclass
 from typing import Literal
 
-ExchangeName = Literal["BINANCE", "OKX", "LIGHTER", "GRVT"]
+ExchangeName = Literal[
+    "BINANCE",
+    "OKX",
+    "LIGHTER",
+    "GRVT",
+    "GATE",
+    "BYBIT",
+    "BITGET",
+    "ASTER",
+    "BACKPACK",
+    "EDGEX",
+]
 
 
 @dataclass
@@ -25,4 +36,7 @@ class FundingDiffRow:
     diff: float
     leverage_used: float
     nominal_funding_max_leverage: float
+    # aliases for clarity in frontend
+    actual_diff: float | None = None
+    nominal_spread: float | None = None
     details: list[FundingRateItem]

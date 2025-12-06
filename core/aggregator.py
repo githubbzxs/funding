@@ -10,6 +10,12 @@ from exchanges.binance import fetch_binance_funding
 from exchanges.okx import fetch_okx_funding
 from exchanges.lighter import fetch_lighter_funding
 from exchanges.grvt import fetch_grvt_funding
+from exchanges.gate import fetch_gate_funding
+from exchanges.bybit import fetch_bybit_funding
+from exchanges.bitget import fetch_bitget_funding
+from exchanges.aster import fetch_aster_funding
+from exchanges.backpack import fetch_backpack_funding
+from exchanges.edgex import fetch_edgex_funding
 
 logger = logging.getLogger(__name__)
 DEFAULT_LEVERAGE = 50.0  # fallback when no leverage info is available
@@ -25,6 +31,12 @@ async def collect_all() -> list[FundingRateItem]:
         fetch_okx_funding(),
         fetch_lighter_funding(),
         fetch_grvt_funding(),
+        fetch_gate_funding(),
+        fetch_bybit_funding(),
+        fetch_bitget_funding(),
+        fetch_aster_funding(),
+        fetch_backpack_funding(),
+        fetch_edgex_funding(),
     ]
     results = await asyncio.gather(*tasks, return_exceptions=True)
 
@@ -87,6 +99,8 @@ def build_ranking(items: Iterable[FundingRateItem]) -> list[FundingDiffRow]:
                 diff=diff,
                 leverage_used=leverage_used,
                 nominal_funding_max_leverage=nominal_diff,
+                actual_diff=diff,
+                nominal_spread=nominal_diff,
                 details=symbol_items,
             )
         )

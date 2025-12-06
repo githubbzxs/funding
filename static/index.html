@@ -371,13 +371,7 @@
             <span class="updated" id="updatedAt">更新中... · 30 秒刷新</span>
           </div>
         </div>
-        <p class="sub">数据源：Binance / OKX / Lighter（GRVT 可选） · 点击时间可自定义刷新间隔</p>
-      </div>
-      <div class="status-bar">
-        <div class="chip">
-          <span class="label">行数</span>
-          <span class="mono" id="rowCount">-</span>
-        </div>
+        <p class="sub">数据源：Binance / OKX / Gate / Bybit / Bitget / Lighter / GRVT（其余按需扩展） · 点击时间可自定义刷新间隔</p>
       </div>
     </header>
 
@@ -391,8 +385,8 @@
           <thead>
             <tr>
               <th>合约</th>
-              <th>价差（8h）</th>
-              <th>名义资金 ($)</th>
+              <th>实际价差（8h）</th>
+              <th>名义价差 ($)</th>
               <th>杠杆</th>
               <th>最佳做多（买入）</th>
               <th>做多费率</th>
@@ -426,7 +420,6 @@
   <script>
     const tableBody = document.getElementById('tableBody');
     const updatedAtEl = document.getElementById('updatedAt');
-    const rowCountEl = document.getElementById('rowCount');
     const refreshChip = document.getElementById('refreshChip');
     const modalBackdrop = document.getElementById('modalBackdrop');
     const refreshInput = document.getElementById('refreshInput');
@@ -466,8 +459,8 @@
 
       for (const row of rows) {
         const diff = row.diff ?? 0;
-        const nominal = row.nominal_funding_max_leverage ?? (diff * 50);
         const leverageUsed = row.leverage_used ?? 50;
+        const nominal = row.nominal_spread ?? row.nominal_funding_max_leverage ?? (diff * leverageUsed);
         const diffClass = diff >= 0 ? 'pos' : 'neg';
         const longRateClass = row.max_rate >= 0 ? 'rate-pos' : 'rate-neg';
         const shortRateClass = row.min_rate >= 0 ? 'rate-pos' : 'rate-neg';
@@ -515,7 +508,6 @@
 
         const seconds = Math.round(refreshIntervalMs / 1000);
         updatedAtEl.textContent = `更新于 ${timeFormatter.format(ts)} · ${seconds} 秒刷新`;
-        rowCountEl.textContent = rows.length;
 
         renderRows(rows);
       } catch (err) {
