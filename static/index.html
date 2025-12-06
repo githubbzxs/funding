@@ -503,6 +503,7 @@
     const exchangeFilters = document.getElementById('exchangeFilters');
     let refreshTimer = null;
     let refreshIntervalMs = 30000;
+    const knownExchanges = ["BINANCE", "OKX", "GATE", "BYBIT", "BITGET", "LIGHTER", "GRVT", "ASTER", "BACKPACK"];
     let selectedExchanges = new Set();
     let latestRows = [];
 
@@ -537,7 +538,8 @@
           });
         }
       });
-      const exchanges = Array.from(exSet).sort();
+      // union with known list to avoid丢失可选项
+      const exchanges = Array.from(new Set([...knownExchanges, ...exSet])).sort();
       if (!exchanges.length) {
         exchangeFilters.innerHTML = '';
         return;
