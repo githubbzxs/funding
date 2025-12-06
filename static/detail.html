@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>合约详情 - 资金费率</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0b0e11;
+      --panel: #0f141c;
+      --panel-strong: #111a25;
+      --muted: #93a4b8;
+      --text: #e6edf3;
+      --teal: #00c897;
+      --coral: #ff4d4d;
+      --border: #1c2734;
+      --shadow: 0 24px 70px rgba(0,0,0,0.45);
+      --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Space Grotesk", "Segoe UI", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 18% 20%, rgba(0,200,151,0.08), transparent 24%),
+        radial-gradient(circle at 80% 0%, rgba(90,169,255,0.08), transparent 26%),
+        var(--bg);
+      padding: 24px 16px 36px;
+    }
+    .shell {
+      max-width: 900px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .panel {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: linear-gradient(140deg, var(--panel), var(--panel-strong));
+      box-shadow: var(--shadow);
+      padding: 16px;
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    h1 { margin: 0; font-size: 22px; font-weight: 700; }
+    .pill {
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 8px 12px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 10px;
+    }
+    .card {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px;
+      background: rgba(255,255,255,0.02);
+    }
+    .label { color: var(--muted); font-size: 13px; margin-bottom: 6px; }
+    .value { font-weight: 700; font-size: 15px; }
+    .nominal { color: #26ffc7; font-family: var(--mono); text-shadow: 0 0 12px rgba(38,255,199,0.35); }
+    .list { display: grid; gap: 8px; }
+    .list-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: rgba(255,255,255,0.02);
+      font-family: var(--mono);
+    }
+    .error { color: var(--coral); }
+    .muted { color: var(--muted); }
+    a { color: var(--teal); text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <div class="panel header">
+      <div>
+        <h1 id="title">合约详情</h1>
+        <div class="pill" id="updatedAt">加载中...</div>
+      </div>
+      <div class="muted"><a href="/static/index.html" target="_self">返回列表</a></div>
+    </div>
+
+    <div class="panel">
+      <div class="grid">
+        <div class="card"><div class="label">合约</div><div class="value" id="sym">-</div></div>
+        <div class="card"><div class="label">实际费率差（8h）</div><div class="value" id="diff">-</div></div>
+        <div class="card"><div class="label">名义费率差 ($)</div><div class="value nominal" id="nominal">-</div></div>
+        <div class="card"><div class="label">杠杆</div><div class="value" id="lev">-</div></div>
+        <div class="card"><div class="label">最佳做多</div><div class="value" id="longEx">-</div></div>
+        <div class="card"><div class="label">做多费率</div><div class="value" id="longRate">-</div></div>
+        <div class="card"><div class="label">最佳做空</div><div class="value" id="shortEx">-</div></div>
+        <div class="card"><div class="label">做空费率</div><div class="value" id="shortRate">-</div></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="label">各交易所费率</div>
+      <div class="list" id="detailList"></div>
+    </div>
+    <div class="error" id="errorMsg" hidden>未找到该合约，请返回重试。</div>
+  </div>
+
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const symbol = params.get('symbol');
+    const titleEl = document.getElementById('title');
+    const updatedAtEl = document.getElementById('updatedAt');
+    const symEl = document.getElementById('sym');
+    const diffEl = document.getElementById('diff');
+    const nominalEl = document.getElementById('nominal');
+    const levEl = document.getElementById('lev');
+    const longExEl = document.getElementById('longEx');
+    const longRateEl = document.getElementById('longRate');
+    const shortExEl = document.getElementById('shortEx');
+    const shortRateEl = document.getElementById('shortRate');
+    const detailListEl = document.getElementById('detailList');
+    const errorMsgEl = document.getElementById('errorMsg');
+    const numberFormatter = new Intl.NumberFormat('zh-CN');
+    const timeFormatter = new Intl.DateTimeFormat('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+    async function loadDetail() {
+      if (!symbol) {
+        errorMsgEl.hidden = false;
+        return;
+      }
+      try {
+        const res = await fetch('/api/funding/ranking');
+        const data = await res.json();
+        const rows = data.rows || [];
+        const row = rows.find(r => r.unified_symbol === symbol);
+        const ts = data.updated_at ? new Date(data.updated_at * 1000) : new Date();
+        updatedAtEl.textContent = `更新于 ${timeFormatter.format(ts)}`;
+        if (!row) {
+          errorMsgEl.hidden = false;
+          return;
+        }
+        errorMsgEl.hidden = true;
+        titleEl.textContent = `${symbol} 详情`;
+        symEl.textContent = symbol;
+        const diff = row.diff ?? 0;
+        const leverageUsed = row.leverage_used ?? 50;
+        const nominal = row.nominal_spread ?? row.nominal_funding_max_leverage ?? (diff * leverageUsed);
+        diffEl.textContent = diff.toFixed(6);
+        nominalEl.textContent = `$${numberFormatter.format(nominal)}`;
+        levEl.textContent = `${leverageUsed.toFixed(0)}x`;
+        longExEl.textContent = row.max_rate_exchange || '-';
+        longRateEl.textContent = (row.max_rate ?? 0).toFixed(6);
+        shortExEl.textContent = row.min_rate_exchange || '-';
+        shortRateEl.textContent = (row.min_rate ?? 0).toFixed(6);
+        const frag = document.createDocumentFragment();
+        const details = Array.isArray(row.details) ? row.details : [];
+        if (details.length) {
+          details.forEach(d => {
+            const item = document.createElement('div');
+            item.className = 'list-item';
+            item.innerHTML = `<span>${d.exchange}</span><span>${(d.funding_rate_8h ?? 0).toFixed(6)}</span>`;
+            frag.appendChild(item);
+          });
+        } else {
+          const empty = document.createElement('div');
+          empty.className = 'list-item';
+          empty.textContent = '暂无明细';
+          frag.appendChild(empty);
+        }
+        detailListEl.innerHTML = '';
+        detailListEl.appendChild(frag);
+      } catch (err) {
+        errorMsgEl.hidden = false;
+        errorMsgEl.textContent = '加载失败，请返回重试。';
+        console.error(err);
+      }
+    }
+
+    loadDetail();
+  </script>
+</body>
+</html>
