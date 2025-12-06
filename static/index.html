@@ -45,35 +45,12 @@
       border-radius: 16px;
       padding: 18px 20px;
       box-shadow: var(--shadow);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 14px;
-      flex-wrap: wrap;
     }
-    .title-stack {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      min-width: 280px;
-    }
-    .eyebrow {
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      font-size: 12px;
-      color: var(--muted);
-    }
-    .title-row {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      flex-wrap: wrap;
-    }
-    h1 {
+    .hero-title {
       margin: 0;
       font-size: 24px;
       letter-spacing: 0.4px;
-      font-weight: 600;
+      font-weight: 700;
     }
     .live {
       display: inline-flex;
@@ -130,6 +107,61 @@
     .chip .label {
       color: var(--muted);
       font-size: 13px;
+    }
+    .controls-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      padding: 10px 4px 0 4px;
+    }
+    .left-controls {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .right-controls {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+    .primary-btn {
+      border: none;
+      cursor: pointer;
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-weight: 700;
+      letter-spacing: 0.2px;
+      font-size: 14px;
+      background: linear-gradient(120deg, #00c897, #2fb1ff);
+      color: #0b0e11;
+      box-shadow: 0 10px 30px rgba(0,200,151,0.32);
+      transition: transform 0.1s ease, box-shadow 0.2s ease;
+    }
+    .primary-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 14px 36px rgba(0,200,151,0.38);
+    }
+    .filter-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 10px;
+      border-radius: 10px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-size: 13px;
+      cursor: pointer;
+      user-select: none;
+    }
+    .filter-chip input {
+      accent-color: #00c897;
+      cursor: pointer;
     }
     .table-shell {
       background: transparent;
@@ -248,10 +280,15 @@
       transition: width 0.4s ease;
     }
     .mono { font-family: var(--mono); }
-    .pos { color: var(--teal); font-weight: 600; }
-    .neg { color: var(--coral); font-weight: 600; }
+    .actual-neutral { color: var(--text); font-family: var(--mono); font-weight: 600; }
     .rate-pos { color: var(--coral); font-family: var(--mono); font-weight: 600; }
     .rate-neg { color: var(--teal); font-family: var(--mono); font-weight: 600; }
+    .nominal-highlight {
+      color: #26ffc7;
+      font-weight: 700;
+      font-family: var(--mono);
+      text-shadow: 0 0 12px rgba(38,255,199,0.35);
+    }
     .lev-pill {
       display: inline-flex;
       align-items: center;
@@ -361,19 +398,19 @@
 <body>
   <div class="shell">
     <header class="hero">
-      <div class="title-stack">
-        <div class="eyebrow">资金费率监控</div>
-        <div class="title-row">
-          <h1>资金费率套利榜</h1>
-          <div class="live" id="refreshChip" title="点击设置刷新间隔">
-            <span class="dot"></span>
-            <span class="live-text">实时</span>
-            <span class="updated" id="updatedAt">更新中... · 30 秒刷新</span>
-          </div>
-        </div>
-        <p class="sub">数据源：Binance / OKX / Gate / Bybit / Bitget / Lighter / GRVT / Aster / Backpack · 点击时间可自定义刷新间隔</p>
-      </div>
+      <h1 class="hero-title">资金费率监控</h1>
     </header>
+
+    <div class="controls-bar">
+      <div class="left-controls">
+        <button id="manualRefresh" class="primary-btn">手动刷新</button>
+        <div class="live" id="refreshChip" title="点击设置刷新间隔">
+          <span class="dot"></span>
+          <span class="updated" id="updatedAt">更新中... · 30 秒刷新</span>
+        </div>
+      </div>
+      <div class="right-controls" id="exchangeFilters" aria-label="交易所筛选"></div>
+    </div>
 
     <div class="table-shell">
       <div class="table-headline">
@@ -421,12 +458,16 @@
     const tableBody = document.getElementById('tableBody');
     const updatedAtEl = document.getElementById('updatedAt');
     const refreshChip = document.getElementById('refreshChip');
+    const manualRefreshBtn = document.getElementById('manualRefresh');
     const modalBackdrop = document.getElementById('modalBackdrop');
     const refreshInput = document.getElementById('refreshInput');
     const cancelModal = document.getElementById('cancelModal');
     const confirmModal = document.getElementById('confirmModal');
+    const exchangeFilters = document.getElementById('exchangeFilters');
     let refreshTimer = null;
     let refreshIntervalMs = 30000;
+    let selectedExchanges = new Set();
+    let latestRows = [];
 
     const numberFormatter = new Intl.NumberFormat('zh-CN');
     const timeFormatter = new Intl.DateTimeFormat('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
@@ -448,20 +489,66 @@
       return `linear-gradient(135deg, hsl(${hue}, 70%, 62%), hsl(${(hue + 24) % 360}, 75%, 55%))`;
     }
 
+    function renderFilters(rows) {
+      const exSet = new Set();
+      rows.forEach(r => {
+        if (r.max_rate_exchange) exSet.add(r.max_rate_exchange);
+        if (r.min_rate_exchange) exSet.add(r.min_rate_exchange);
+      });
+      const exchanges = Array.from(exSet).sort();
+      if (!exchanges.length) {
+        exchangeFilters.innerHTML = '';
+        return;
+      }
+      // initialize selection if empty
+      if (selectedExchanges.size === 0) {
+        exchanges.forEach(ex => selectedExchanges.add(ex));
+      }
+      const frag = document.createDocumentFragment();
+      exchanges.forEach(ex => {
+        const id = `ex-${ex}`;
+        const label = document.createElement('label');
+        label.className = 'filter-chip';
+        label.setAttribute('for', id);
+        label.innerHTML = `<input type="checkbox" id="${id}" value="${ex}" ${selectedExchanges.has(ex) ? 'checked' : ''}/> ${ex}`;
+        label.querySelector('input').addEventListener('change', (e) => {
+          if (e.target.checked) {
+            selectedExchanges.add(ex);
+          } else {
+            selectedExchanges.delete(ex);
+          }
+          renderRows(latestRows);
+        });
+        frag.appendChild(label);
+      });
+      exchangeFilters.innerHTML = '';
+      exchangeFilters.appendChild(frag);
+    }
+
+    function filterRows(rows) {
+      if (!selectedExchanges || selectedExchanges.size === 0) return rows;
+      return rows.filter(r => selectedExchanges.has(r.max_rate_exchange) && selectedExchanges.has(r.min_rate_exchange));
+    }
+
     function renderRows(rows) {
+      const filtered = filterRows(rows);
       if (!rows.length) {
         tableBody.innerHTML = '<tr><td class="empty" colspan="8">暂无数据。</td></tr>';
         return;
       }
 
-      const maxDiff = Math.max(...rows.map(r => Math.abs(r.diff || 0)), 0.000001);
+      if (!filtered.length) {
+        tableBody.innerHTML = '<tr><td class="empty" colspan="8">所选交易所暂无可显示数据。</td></tr>';
+        return;
+      }
+
+      const maxDiff = Math.max(...filtered.map(r => Math.abs(r.diff || 0)), 0.000001);
       const frag = document.createDocumentFragment();
 
-      for (const row of rows) {
+      for (const row of filtered) {
         const diff = row.diff ?? 0;
         const leverageUsed = row.leverage_used ?? 50;
         const nominal = row.nominal_spread ?? row.nominal_funding_max_leverage ?? (diff * leverageUsed);
-        const diffClass = diff >= 0 ? 'pos' : 'neg';
         const longRateClass = row.max_rate >= 0 ? 'rate-pos' : 'rate-neg';
         const shortRateClass = row.min_rate >= 0 ? 'rate-pos' : 'rate-neg';
         const barWidth = Math.min(100, Math.max(6, (Math.abs(diff) / maxDiff) * 100));
@@ -481,11 +568,11 @@
           </td>
           <td>
             <div class="diff-cell">
-              <span class="${diffClass} mono">${diff.toFixed(6)}</span>
+              <span class="actual-neutral">${diff.toFixed(6)}</span>
               <div class="bar"><span class="fill" style="width:${barWidth}%"></span></div>
             </div>
           </td>
-          <td class="numeric">$${numberFormatter.format(nominal)}</td>
+          <td class="numeric"><span class="nominal-highlight">$${numberFormatter.format(nominal)}</span></td>
           <td><span class="lev-pill ${leverageUsed >= 30 ? 'warn' : 'calm'}">${leverageUsed.toFixed(0)}x</span></td>
           <td><span class="exchange">${row.max_rate_exchange}</span></td>
           <td class="numeric ${longRateClass}">${row.max_rate.toFixed(6)}</td>
@@ -498,8 +585,12 @@
       tableBody.appendChild(frag);
     }
 
-    async function loadData() {
-      tableBody.innerHTML = '<tr><td class="empty" colspan="8">加载中...</td></tr>';
+    async function loadData(isManual = false) {
+      if (isManual) {
+        tableBody.innerHTML = '<tr><td class="empty" colspan="8">手动刷新中...</td></tr>';
+      } else {
+        tableBody.innerHTML = '<tr><td class="empty" colspan="8">加载中...</td></tr>';
+      }
       try {
         const res = await fetch('/api/funding/ranking');
         const data = await res.json();
@@ -508,7 +599,8 @@
 
         const seconds = Math.round(refreshIntervalMs / 1000);
         updatedAtEl.textContent = `更新于 ${timeFormatter.format(ts)} · ${seconds} 秒刷新`;
-
+        latestRows = rows;
+        renderFilters(rows);
         renderRows(rows);
       } catch (err) {
         console.error(err);
@@ -536,6 +628,7 @@
     }
 
     refreshChip.addEventListener('click', openModal);
+    manualRefreshBtn.addEventListener('click', () => loadData(true));
     cancelModal.addEventListener('click', closeModal);
     confirmModal.addEventListener('click', () => {
       const value = parseInt(refreshInput.value, 10);
