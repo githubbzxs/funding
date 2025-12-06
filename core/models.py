@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Literal
 
 ExchangeName = Literal[
@@ -38,4 +38,4 @@ class FundingDiffRow:
     # aliases for clarity in frontend
     actual_diff: float | None = None
     nominal_spread: float | None = None
-    details: list[FundingRateItem]
+    details: list[FundingRateItem] = field(default_factory=list)
