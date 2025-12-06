@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Funding Rate Arbitrage Monitor</title>
+  <title>资金费率套利监控</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
@@ -85,6 +85,8 @@
       border: 1px solid rgba(255,255,255,0.08);
       color: var(--muted);
       font-size: 13px;
+      cursor: pointer;
+      transition: border-color 0.15s ease, transform 0.15s ease;
     }
     .live .dot {
       width: 10px;
@@ -93,6 +95,10 @@
       display: inline-block;
       background: var(--teal);
       box-shadow: 0 0 0 6px rgba(0,200,151,0.15);
+    }
+    .live:hover {
+      border-color: rgba(255,255,255,0.2);
+      transform: translateY(-1px);
     }
     .updated {
       color: var(--muted);
@@ -280,58 +286,139 @@
       header.hero { padding: 14px 12px; }
       th, td { padding: 10px 12px; }
     }
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.55);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 10;
+      backdrop-filter: blur(2px);
+    }
+    .modal-backdrop.show { display: flex; }
+    .modal {
+      background: #0f141c;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 18px;
+      width: min(400px, 92vw);
+      box-shadow: var(--shadow);
+      display: grid;
+      gap: 12px;
+    }
+    .modal-header {
+      font-weight: 600;
+      font-size: 16px;
+    }
+    .modal-body {
+      display: grid;
+      gap: 8px;
+    }
+    .modal-body label {
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .modal-body input {
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: #0d121a;
+      color: var(--text);
+      font-size: 14px;
+    }
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+    button {
+      border: none;
+      cursor: pointer;
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-weight: 600;
+      letter-spacing: 0.2px;
+      font-size: 14px;
+    }
+    button.ghost {
+      background: rgba(255,255,255,0.06);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    button.primary {
+      background: linear-gradient(120deg, #00c897, #2fb1ff);
+      color: #0b0e11;
+      box-shadow: 0 10px 30px rgba(0,200,151,0.32);
+    }
+    .muted-text {
+      color: var(--muted);
+      margin: 0;
+      font-size: 13px;
+    }
   </style>
 </head>
 <body>
   <div class="shell">
     <header class="hero">
       <div class="title-stack">
-        <div class="eyebrow">Funding Monitor</div>
+        <div class="eyebrow">资金费率监控</div>
         <div class="title-row">
-          <h1>Funding Rate Arbitrage</h1>
-          <div class="live">
+          <h1>资金费率套利榜</h1>
+          <div class="live" id="refreshChip" title="点击设置刷新间隔">
             <span class="dot"></span>
-            <span class="live-text">Live</span>
-            <span class="updated" id="updatedAt">Updating...</span>
+            <span class="live-text">实时</span>
+            <span class="updated" id="updatedAt">更新中... · 30 秒刷新</span>
           </div>
         </div>
-        <p class="sub">Auto-refreshes every 30s · Data from Binance / OKX / Lighter (GRVT optional)</p>
+        <p class="sub">数据源：Binance / OKX / Lighter（GRVT 可选） · 点击时间可自定义刷新间隔</p>
       </div>
       <div class="status-bar">
         <div class="chip">
-          <span class="label">Rows</span>
+          <span class="label">行数</span>
           <span class="mono" id="rowCount">-</span>
-        </div>
-        <div class="chip">
-          <span class="label">Mode</span>
-          <span id="leverageMode">Symbol Max (50x)</span>
         </div>
       </div>
     </header>
 
     <div class="table-shell">
       <div class="table-headline">
-        <div class="title">Spread leaderboard</div>
-        <div class="hint">Diff (8h) ordered by absolute spread</div>
+        <div class="title">价差排行榜</div>
+        <div class="hint">8 小时资金费率绝对值排序</div>
       </div>
       <div class="table-wrap">
         <table>
           <thead>
             <tr>
-              <th>Symbol</th>
-              <th>Diff (8h)</th>
-              <th>Nominal ($)</th>
-              <th>Lev.</th>
-              <th>Best Long (Buy)</th>
-              <th>Long Rate</th>
-              <th>Best Short (Sell)</th>
-              <th>Short Rate</th>
+              <th>合约</th>
+              <th>价差（8h）</th>
+              <th>名义资金 ($)</th>
+              <th>杠杆</th>
+              <th>最佳做多（买入）</th>
+              <th>做多费率</th>
+              <th>最佳做空（卖出）</th>
+              <th>做空费率</th>
             </tr>
           </thead>
           <tbody id="tableBody">
-            <tr><td class="empty" colspan="8">Loading...</td></tr>
+            <tr><td class="empty" colspan="8">加载中...</td></tr>
           </tbody>
         </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="modalBackdrop">
+    <div class="modal">
+      <div class="modal-header">设置刷新间隔</div>
+      <div class="modal-body">
+        <label for="refreshInput">刷新间隔（秒）</label>
+        <input id="refreshInput" type="number" min="5" step="5" value="30" />
+        <p class="muted-text">最少 5 秒，设置后立即生效。</p>
+      </div>
+      <div class="modal-actions">
+        <button id="cancelModal" class="ghost">取消</button>
+        <button id="confirmModal" class="primary">保存</button>
       </div>
     </div>
   </div>
@@ -340,10 +427,16 @@
     const tableBody = document.getElementById('tableBody');
     const updatedAtEl = document.getElementById('updatedAt');
     const rowCountEl = document.getElementById('rowCount');
-    const leverageModeEl = document.getElementById('leverageMode');
+    const refreshChip = document.getElementById('refreshChip');
+    const modalBackdrop = document.getElementById('modalBackdrop');
+    const refreshInput = document.getElementById('refreshInput');
+    const cancelModal = document.getElementById('cancelModal');
+    const confirmModal = document.getElementById('confirmModal');
+    let refreshTimer = null;
+    let refreshIntervalMs = 30000;
 
-    const numberFormatter = new Intl.NumberFormat('en-US');
-    const timeFormatter = new Intl.DateTimeFormat('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const numberFormatter = new Intl.NumberFormat('zh-CN');
+    const timeFormatter = new Intl.DateTimeFormat('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
     function formatSymbol(sym) {
       if (!sym) return { base: '', rest: '' };
@@ -364,7 +457,7 @@
 
     function renderRows(rows) {
       if (!rows.length) {
-        tableBody.innerHTML = '<tr><td class="empty" colspan="8">No data available.</td></tr>';
+        tableBody.innerHTML = '<tr><td class="empty" colspan="8">暂无数据。</td></tr>';
         return;
       }
 
@@ -413,27 +506,61 @@
     }
 
     async function loadData() {
-      tableBody.innerHTML = '<tr><td class="empty" colspan="8">Loading...</td></tr>';
+      tableBody.innerHTML = '<tr><td class="empty" colspan="8">加载中...</td></tr>';
       try {
         const res = await fetch('/api/funding/ranking');
         const data = await res.json();
         const rows = data.rows || [];
         const ts = data.updated_at ? new Date(data.updated_at * 1000) : new Date();
 
-        updatedAtEl.textContent = `Updated ${timeFormatter.format(ts)}`;
+        const seconds = Math.round(refreshIntervalMs / 1000);
+        updatedAtEl.textContent = `更新于 ${timeFormatter.format(ts)} · ${seconds} 秒刷新`;
         rowCountEl.textContent = rows.length;
-        leverageModeEl.textContent = 'Symbol Max (50x)';
 
         renderRows(rows);
       } catch (err) {
         console.error(err);
-        tableBody.innerHTML = '<tr><td class="empty" colspan="8">Failed to load data.</td></tr>';
-        updatedAtEl.textContent = 'Failed to update';
+        tableBody.innerHTML = '<tr><td class="empty" colspan="8">加载失败。</td></tr>';
+        updatedAtEl.textContent = '更新失败';
       }
     }
 
+    function openModal() {
+      modalBackdrop.classList.add('show');
+      refreshInput.value = Math.round(refreshIntervalMs / 1000);
+      refreshInput.focus();
+    }
+
+    function closeModal() {
+      modalBackdrop.classList.remove('show');
+    }
+
+    function applyRefreshInterval(seconds) {
+      const clamped = Math.max(5, seconds);
+      refreshIntervalMs = clamped * 1000;
+      if (refreshTimer) clearInterval(refreshTimer);
+      loadData();
+      refreshTimer = setInterval(loadData, refreshIntervalMs);
+    }
+
+    refreshChip.addEventListener('click', openModal);
+    cancelModal.addEventListener('click', closeModal);
+    confirmModal.addEventListener('click', () => {
+      const value = parseInt(refreshInput.value, 10);
+      if (!Number.isNaN(value)) {
+        applyRefreshInterval(value);
+      }
+      closeModal();
+    });
+
+    modalBackdrop.addEventListener('click', (e) => {
+      if (e.target === modalBackdrop) {
+        closeModal();
+      }
+    });
+
     loadData();
-    setInterval(loadData, 30000);
+    refreshTimer = setInterval(loadData, refreshIntervalMs);
   </script>
 </body>
 </html>
