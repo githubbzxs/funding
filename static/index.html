@@ -226,18 +226,6 @@
       gap: 10px;
       min-width: 160px;
     }
-    .token-icon {
-      width: 36px;
-      height: 36px;
-      border-radius: 50%;
-      display: grid;
-      place-items: center;
-      font-weight: 700;
-      color: #0b0e11;
-      box-shadow: 0 10px 24px rgba(0,0,0,0.35);
-      font-size: 14px;
-      letter-spacing: 0.4px;
-    }
     .symbol-text {
       display: flex;
       flex-direction: column;
@@ -288,6 +276,68 @@
       font-weight: 700;
       font-family: var(--mono);
       text-shadow: 0 0 12px rgba(38,255,199,0.35);
+    }
+    .detail-shell {
+      margin-top: 16px;
+      padding: 14px;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: linear-gradient(140deg, var(--panel), var(--panel-strong));
+      box-shadow: var(--shadow);
+    }
+    .detail-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+    .detail-title {
+      font-size: 18px;
+      font-weight: 700;
+    }
+    .detail-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 10px;
+    }
+    .detail-card {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px;
+      background: rgba(255,255,255,0.02);
+    }
+    .detail-card .label {
+      color: var(--muted);
+      font-size: 13px;
+      margin-bottom: 6px;
+    }
+    .detail-card .value {
+      font-weight: 700;
+      font-size: 15px;
+    }
+    .detail-list {
+      margin-top: 12px;
+    }
+    .detail-list .label {
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+    .detail-list-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: rgba(255,255,255,0.02);
+      margin-bottom: 6px;
+      font-family: var(--mono);
+    }
+    .clickable-row {
+      cursor: pointer;
+    }
+    .clickable-row:hover {
+      background: #172230;
+      transform: translateY(-1px);
     }
     .lev-pill {
       display: inline-flex;
@@ -414,7 +464,7 @@
 
     <div class="table-shell">
       <div class="table-headline">
-        <div class="title">价差排行榜</div>
+        <div class="title">费率差列表</div>
         <div class="hint">8 小时资金费率绝对值排序</div>
       </div>
       <div class="table-wrap">
@@ -422,19 +472,59 @@
           <thead>
             <tr>
               <th>合约</th>
-              <th>实际价差（8h）</th>
-              <th>名义价差 ($)</th>
-              <th>杠杆</th>
-              <th>最佳做多（买入）</th>
-              <th>做多费率</th>
-              <th>最佳做空（卖出）</th>
-              <th>做空费率</th>
+              <th>实际费率差（8h）</th>
+              <th>名义费率差 ($)</th>
             </tr>
           </thead>
           <tbody id="tableBody">
             <tr><td class="empty" colspan="8">加载中...</td></tr>
           </tbody>
         </table>
+      </div>
+    </div>
+
+    <div class="detail-shell" id="detailView" hidden>
+      <div class="detail-header">
+        <button class="ghost" id="backToList">返回列表</button>
+        <div class="detail-title" id="detailTitle">详情</div>
+      </div>
+      <div class="detail-grid">
+        <div class="detail-card">
+          <div class="label">合约</div>
+          <div class="value" id="detailSymbol">-</div>
+        </div>
+        <div class="detail-card">
+          <div class="label">实际费率差（8h）</div>
+          <div class="value" id="detailDiff">-</div>
+        </div>
+        <div class="detail-card">
+          <div class="label">名义费率差 ($)</div>
+          <div class="value nominal-highlight" id="detailNominal">-</div>
+        </div>
+        <div class="detail-card">
+          <div class="label">杠杆</div>
+          <div class="value" id="detailLev">-</div>
+        </div>
+        <div class="detail-card">
+          <div class="label">最佳做多</div>
+          <div class="value" id="detailLong">-</div>
+        </div>
+        <div class="detail-card">
+          <div class="label">做多费率</div>
+          <div class="value" id="detailLongRate">-</div>
+        </div>
+        <div class="detail-card">
+          <div class="label">最佳做空</div>
+          <div class="value" id="detailShort">-</div>
+        </div>
+        <div class="detail-card">
+          <div class="label">做空费率</div>
+          <div class="value" id="detailShortRate">-</div>
+        </div>
+      </div>
+      <div class="detail-list">
+        <div class="label">各交易所费率</div>
+        <div id="detailList"></div>
       </div>
     </div>
   </div>
@@ -464,6 +554,18 @@
     const cancelModal = document.getElementById('cancelModal');
     const confirmModal = document.getElementById('confirmModal');
     const exchangeFilters = document.getElementById('exchangeFilters');
+    const detailView = document.getElementById('detailView');
+    const backToListBtn = document.getElementById('backToList');
+    const detailTitle = document.getElementById('detailTitle');
+    const detailSymbol = document.getElementById('detailSymbol');
+    const detailDiff = document.getElementById('detailDiff');
+    const detailNominal = document.getElementById('detailNominal');
+    const detailLev = document.getElementById('detailLev');
+    const detailLong = document.getElementById('detailLong');
+    const detailLongRate = document.getElementById('detailLongRate');
+    const detailShort = document.getElementById('detailShort');
+    const detailShortRate = document.getElementById('detailShortRate');
+    const detailList = document.getElementById('detailList');
     let refreshTimer = null;
     let refreshIntervalMs = 30000;
     let selectedExchanges = new Set();
@@ -556,10 +658,10 @@
         const restDisplay = rest ? ` / ${rest}` : '';
         const tokenLetter = (base || '?').slice(0, 3).toUpperCase();
         const tr = document.createElement('tr');
+        tr.classList.add('clickable-row');
         tr.innerHTML = `
           <td>
             <div class="symbol-cell">
-              <span class="token-icon" style="background:${colorFromString(row.unified_symbol || '')}">${tokenLetter}</span>
               <div class="symbol-text">
                 <div class="symbol-main">${base} <span class="muted">${restDisplay}</span></div>
                 <div class="symbol-sub">${row.unified_symbol}</div>
@@ -573,12 +675,8 @@
             </div>
           </td>
           <td class="numeric"><span class="nominal-highlight">$${numberFormatter.format(nominal)}</span></td>
-          <td><span class="lev-pill ${leverageUsed >= 30 ? 'warn' : 'calm'}">${leverageUsed.toFixed(0)}x</span></td>
-          <td><span class="exchange">${row.max_rate_exchange}</span></td>
-          <td class="numeric ${longRateClass}">${row.max_rate.toFixed(6)}</td>
-          <td><span class="exchange">${row.min_rate_exchange}</span></td>
-          <td class="numeric ${shortRateClass}">${row.min_rate.toFixed(6)}</td>
         `;
+        tr.addEventListener('click', () => showDetail(row));
         frag.appendChild(tr);
       }
       tableBody.innerHTML = '';
@@ -643,6 +741,46 @@
         closeModal();
       }
     });
+
+    function showDetail(row) {
+      const diff = row.diff ?? 0;
+      const leverageUsed = row.leverage_used ?? 50;
+      const nominal = row.nominal_spread ?? row.nominal_funding_max_leverage ?? (diff * leverageUsed);
+      detailTitle.textContent = `${row.unified_symbol} 详情`;
+      detailSymbol.textContent = row.unified_symbol;
+      detailDiff.textContent = diff.toFixed(6);
+      detailNominal.textContent = `$${numberFormatter.format(nominal)}`;
+      detailLev.textContent = `${leverageUsed.toFixed(0)}x`;
+      detailLong.textContent = row.max_rate_exchange || '-';
+      detailLongRate.textContent = (row.max_rate ?? 0).toFixed(6);
+      detailShort.textContent = row.min_rate_exchange || '-';
+      detailShortRate.textContent = (row.min_rate ?? 0).toFixed(6);
+
+      const listFrag = document.createDocumentFragment();
+      const details = Array.isArray(row.details) ? row.details : [];
+      if (details.length) {
+        details.forEach(d => {
+          const item = document.createElement('div');
+          item.className = 'detail-list-item';
+          item.innerHTML = `<span>${d.exchange}</span><span>${(d.funding_rate_8h ?? 0).toFixed(6)}</span>`;
+          listFrag.appendChild(item);
+        });
+      } else {
+        const empty = document.createElement('div');
+        empty.className = 'detail-list-item';
+        empty.textContent = '暂无明细';
+        listFrag.appendChild(empty);
+      }
+      detailList.innerHTML = '';
+      detailList.appendChild(listFrag);
+      detailView.hidden = false;
+    }
+
+    function hideDetail() {
+      detailView.hidden = true;
+    }
+
+    backToListBtn.addEventListener('click', hideDetail);
 
     loadData();
     refreshTimer = setInterval(loadData, refreshIntervalMs);
