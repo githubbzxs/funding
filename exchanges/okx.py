@@ -26,31 +26,32 @@ def _parse_next_time(next_time: Optional[str]) -> Optional[int]:
         return None
 
 
-async def _fetch_single_instrument(client: httpx.AsyncClient, inst_id: str) -> List[FundingRateItem]:
+async def _fetch_single_instrument(client: httpx.AsyncClient, sem: asyncio.Semaphore, inst_id: str) -> List[FundingRateItem]:
     params = {"instId": inst_id}
     items: List[FundingRateItem] = []
     try:
-        resp = await client.get(OKX_FUNDING_URL, params=params)
-        resp.raise_for_status()
-        payload = resp.json()
-        data = payload.get("data") or []
-        if not data:
-            return items
-        row = data[0]
-        raw_rate = float(row.get("fundingRate", "0"))
-        next_time = _parse_next_time(row.get("nextFundingTime"))
-        unified_symbol = okx_instid_to_unified(inst_id)
-        items.append(
-            FundingRateItem(
-                exchange="OKX",
-                symbol=inst_id,
-                unified_symbol=unified_symbol,
-                funding_rate_8h=raw_rate,
-                raw_funding_rate=raw_rate,
-                next_funding_time=next_time,
-                max_leverage=None,  # filled later when available
+        async with sem:
+            resp = await client.get(OKX_FUNDING_URL, params=params)
+            resp.raise_for_status()
+            payload = resp.json()
+            data = payload.get("data") or []
+            if not data:
+                return items
+            row = data[0]
+            raw_rate = float(row.get("fundingRate", "0"))
+            next_time = _parse_next_time(row.get("nextFundingTime"))
+            unified_symbol = okx_instid_to_unified(inst_id)
+            items.append(
+                FundingRateItem(
+                    exchange="OKX",
+                    symbol=inst_id,
+                    unified_symbol=unified_symbol,
+                    funding_rate_8h=raw_rate,
+                    raw_funding_rate=raw_rate,
+                    next_funding_time=next_time,
+                    max_leverage=None,  # filled later when available
+                )
             )
-        )
     except Exception as exc:
         logger.warning("Failed to fetch OKX funding for %s: %s", inst_id, exc)
     return items
@@ -84,7 +85,9 @@ async def fetch_okx_funding() -> List[FundingRateItem]:
                         leverage_map[inst_id] = None
             logger.info("Discovered %d OKX USDT swap instruments", len(inst_ids))
 
-            tasks = [_fetch_single_instrument(client, inst) for inst in inst_ids]
+            # OKX 对高并发会限流，限制并发避免全量失败
+            sem = asyncio.Semaphore(20)
+            tasks = [_fetch_single_instrument(client, sem, inst) for inst in inst_ids]
             results = await asyncio.gather(*tasks, return_exceptions=True)
     except Exception as exc:
         logger.warning("Failed to fetch OKX funding rates: %s", exc)
