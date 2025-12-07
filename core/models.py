@@ -4,13 +4,6 @@ from typing import Literal
 ExchangeName = Literal[
     "BINANCE",
     "OKX",
-    "LIGHTER",
-    "GRVT",
-    "GATE",
-    "BYBIT",
-    "BITGET",
-    "ASTER",
-    "BACKPACK",
 ]
 
 

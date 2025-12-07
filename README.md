@@ -1,6 +1,6 @@
 # Funding Rate Arbitrage Monitor
 
-基于 FastAPI 的资金费率套利监控工具，聚合 Binance / OKX / zkLighter / GRVT 的永续合约资金费率，统一为 8h 口径，计算多空最大价差并排序，通过 REST API 和一个简洁的前端展示。
+基于 FastAPI 的资金费率套利监控工具，当前仅聚合 Binance / OKX 的永续合约资金费率，统一为 8h 口径，计算多空最大价差并排序，通过 REST API 和一个简洁的前端展示。
 
 ## 一行部署（全新服务器）
 
