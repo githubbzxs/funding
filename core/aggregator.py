@@ -11,25 +11,41 @@ from exchanges.okx import fetch_okx_funding
 
 logger = logging.getLogger(__name__)
 DEFAULT_LEVERAGE = 50.0  # fallback when no leverage info is available
+EXCHANGE_CACHE: dict[str, list[FundingRateItem]] = {}
 
 
 async def collect_all() -> list[FundingRateItem]:
     """
     Fetch funding rates from all exchanges concurrently.
-    Errors from individual exchanges are logged and ignored.
+    If an exchange失败或返回空数据，尽量使用上次的缓存，降低“全是0”情况。
     """
-    tasks = [
-        fetch_binance_funding(),
-        fetch_okx_funding(),
-    ]
-    results = await asyncio.gather(*tasks, return_exceptions=True)
+    exchanges = [("BINANCE", fetch_binance_funding()), ("OKX", fetch_okx_funding())]
+    coros = [c for _, c in exchanges]
+    results = await asyncio.gather(*coros, return_exceptions=True)
 
     items: list[FundingRateItem] = []
-    for result in results:
+    for (name, _), result in zip(exchanges, results):
         if isinstance(result, Exception):
-            logger.error("Error while collecting funding rates", exc_info=result)
+            logger.error("Error while collecting funding for %s", name, exc_info=result)
+            cached = EXCHANGE_CACHE.get(name, [])
+            if cached:
+                logger.info("Using cached %d items for %s due to error", len(cached), name)
+                items.extend(cached)
             continue
-        items.extend(result)
+
+        current = result or []
+        if not current:
+            cached = EXCHANGE_CACHE.get(name, [])
+            if cached:
+                logger.info("Using cached %d items for %s due to empty fetch", len(cached), name)
+                items.extend(cached)
+            else:
+                logger.warning("No items for %s and no cache available", name)
+            continue
+
+        EXCHANGE_CACHE[name] = current
+        items.extend(current)
+
     logger.info("Collected %d total funding items", len(items))
     return items
 
@@ -44,27 +60,8 @@ def build_ranking(items: Iterable[FundingRateItem]) -> list[FundingDiffRow]:
 
     rows: list[FundingDiffRow] = []
     for unified_symbol, symbol_items in grouped.items():
-        if len(symbol_items) == 0:
-            continue
-        if len(symbol_items) == 1:
-            # 如果只有单一交易所的数据，也返回一行，方便前端不至于空表
-            item = symbol_items[0]
-            leverage_used = item.max_leverage or DEFAULT_LEVERAGE
-            rows.append(
-                FundingDiffRow(
-                    unified_symbol=unified_symbol,
-                    max_rate_exchange=item.exchange,
-                    max_rate=item.funding_rate_8h,
-                    min_rate_exchange=item.exchange,
-                    min_rate=item.funding_rate_8h,
-                    diff=0.0,
-                    leverage_used=leverage_used,
-                    nominal_funding_max_leverage=0.0,
-                    actual_diff=0.0,
-                    nominal_spread=0.0,
-                    details=symbol_items,
-                )
-            )
+        # 只有同时存在两个交易所数据才计算价差
+        if len(symbol_items) < 2:
             continue
 
         max_rate = max(si.funding_rate_8h for si in symbol_items)

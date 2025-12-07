@@ -86,7 +86,7 @@ async def fetch_okx_funding() -> List[FundingRateItem]:
             logger.info("Discovered %d OKX USDT swap instruments", len(inst_ids))
 
             # OKX 对高并发会限流，限制并发避免全量失败
-            sem = asyncio.Semaphore(20)
+            sem = asyncio.Semaphore(10)
             tasks = [_fetch_single_instrument(client, sem, inst) for inst in inst_ids]
             results = await asyncio.gather(*tasks, return_exceptions=True)
     except Exception as exc:
