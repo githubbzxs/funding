@@ -44,7 +44,27 @@ def build_ranking(items: Iterable[FundingRateItem]) -> list[FundingDiffRow]:
 
     rows: list[FundingDiffRow] = []
     for unified_symbol, symbol_items in grouped.items():
-        if len(symbol_items) < 2:
+        if len(symbol_items) == 0:
+            continue
+        if len(symbol_items) == 1:
+            # 如果只有单一交易所的数据，也返回一行，方便前端不至于空表
+            item = symbol_items[0]
+            leverage_used = item.max_leverage or DEFAULT_LEVERAGE
+            rows.append(
+                FundingDiffRow(
+                    unified_symbol=unified_symbol,
+                    max_rate_exchange=item.exchange,
+                    max_rate=item.funding_rate_8h,
+                    min_rate_exchange=item.exchange,
+                    min_rate=item.funding_rate_8h,
+                    diff=0.0,
+                    leverage_used=leverage_used,
+                    nominal_funding_max_leverage=0.0,
+                    actual_diff=0.0,
+                    nominal_spread=0.0,
+                    details=symbol_items,
+                )
+            )
             continue
 
         max_rate = max(si.funding_rate_8h for si in symbol_items)
