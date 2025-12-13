@@ -10,11 +10,11 @@ from core.models import FundingRateItem
 
 OKX_FUNDING_URL = "https://www.okx.com/api/v5/public/funding-rate"
 OKX_INSTRUMENTS_URL = "https://www.okx.com/api/v5/public/instruments"
-REQUEST_TIMEOUT = 10.0
-OKX_MAX_CONCURRENCY = int(os.getenv("OKX_MAX_CONCURRENCY", "5"))
-OKX_TOTAL_TIMEOUT = float(os.getenv("OKX_TOTAL_TIMEOUT", "15"))
-OKX_RETRIES = int(os.getenv("OKX_RETRIES", "2"))
-OKX_RETRY_BACKOFF = float(os.getenv("OKX_RETRY_BACKOFF", "0.5"))
+REQUEST_TIMEOUT = 5.0
+OKX_MAX_CONCURRENCY = int(os.getenv("OKX_MAX_CONCURRENCY", "20"))
+OKX_TOTAL_TIMEOUT = float(os.getenv("OKX_TOTAL_TIMEOUT", "8"))
+OKX_RETRIES = int(os.getenv("OKX_RETRIES", "1"))
+OKX_RETRY_BACKOFF = float(os.getenv("OKX_RETRY_BACKOFF", "0.3"))
 
 logger = logging.getLogger(__name__)
 

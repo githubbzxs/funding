@@ -7,7 +7,7 @@ from core.models import ExchangeName, FundingRateItem
 
 BINANCE_URL = "https://fapi.binance.com/fapi/v1/premiumIndex"
 BINANCE_QUOTE = "USDT"
-REQUEST_TIMEOUT = 10.0
+REQUEST_TIMEOUT = 5.0
 # Binance USDT-M 通常支持最高 125x，作为无权限下的保守估计
 BINANCE_DEFAULT_LEVERAGE = 125.0
 

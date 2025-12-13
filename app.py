@@ -18,7 +18,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 REFRESH_INTERVAL = int(os.getenv("REFRESH_INTERVAL", "30"))
-REFRESH_TIMEOUT = float(os.getenv("REFRESH_TIMEOUT", "20"))
+REFRESH_TIMEOUT = float(os.getenv("REFRESH_TIMEOUT", "9"))
 
 REFRESH_LOCK = asyncio.Lock()
 CACHE: Dict[str, Any] = {
