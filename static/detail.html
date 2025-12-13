@@ -6,149 +6,259 @@
   <title>合约详情 - 资金费率</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg: #0b0e11;
-      --panel: #0f141c;
-      --panel-strong: #111a25;
-      --muted: #93a4b8;
-      --text: #e6edf3;
-      --teal: #00c897;
-      --coral: #ff4d4d;
-      --border: #1c2734;
-      --shadow: 0 24px 70px rgba(0,0,0,0.45);
-      --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      --bg-primary: #0a0a0f;
+      --bg-secondary: #12121a;
+      --bg-card: #16161f;
+      --bg-elevated: #1a1a24;
+      --border-subtle: rgba(255,255,255,0.06);
+      --border-accent: rgba(255,255,255,0.1);
+      --text-primary: #f0f0f5;
+      --text-secondary: #8b8b9a;
+      --text-muted: #5c5c6b;
+      --accent-green: #00d991;
+      --accent-green-glow: rgba(0,217,145,0.15);
+      --accent-red: #ff5252;
+      --accent-blue: #3b82f6;
+      --gradient-main: linear-gradient(135deg, #00d991 0%, #3b82f6 100%);
+      --shadow-md: 0 4px 12px rgba(0,0,0,0.4);
+      --shadow-lg: 0 8px 32px rgba(0,0,0,0.5);
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+      --mono: "JetBrains Mono", monospace;
+      --sans: "Inter", -apple-system, system-ui, sans-serif;
     }
-    * { box-sizing: border-box; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      margin: 0;
+      font-family: var(--sans);
+      background: var(--bg-primary);
+      color: var(--text-primary);
       min-height: 100vh;
-      font-family: "Space Grotesk", "Segoe UI", sans-serif;
-      color: var(--text);
-      background:
-        radial-gradient(circle at 18% 20%, rgba(0,200,151,0.08), transparent 24%),
-        radial-gradient(circle at 80% 0%, rgba(90,169,255,0.08), transparent 26%),
-        var(--bg);
-      padding: 24px 16px 36px;
+      line-height: 1.5;
+      padding: 24px;
     }
-    .shell {
+    .app {
       max-width: 900px;
       margin: 0 auto;
       display: flex;
       flex-direction: column;
-      gap: 14px;
+      gap: 16px;
     }
-    .panel {
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      background: linear-gradient(140deg, var(--panel), var(--panel-strong));
-      box-shadow: var(--shadow);
-      padding: 16px;
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      box-shadow: var(--shadow-md);
     }
     .header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      gap: 12px;
       flex-wrap: wrap;
+      gap: 12px;
     }
-    h1 { margin: 0; font-size: 22px; font-weight: 700; }
-    .pill {
-      border: 1px solid var(--border);
-      border-radius: 999px;
-      padding: 8px 12px;
-      color: var(--muted);
-      font-size: 13px;
+    .header h1 {
+      font-size: 20px;
+      font-weight: 700;
     }
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-      gap: 10px;
-    }
-    .card {
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 10px;
-      background: rgba(255,255,255,0.02);
-    }
-    .label { color: var(--muted); font-size: 13px; margin-bottom: 6px; }
-    .value { font-weight: 700; font-size: 15px; }
-    .nominal { color: #26ffc7; font-family: var(--mono); text-shadow: 0 0 12px rgba(38,255,199,0.35); }
-    .list { display: grid; gap: 8px; }
-    .list-item {
+    .header-meta {
       display: flex;
-      justify-content: space-between;
-      padding: 8px 10px;
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      background: rgba(255,255,255,0.02);
+      align-items: center;
+      gap: 12px;
+    }
+    .badge {
+      padding: 6px 12px;
+      border-radius: 999px;
+      font-size: 12px;
+      color: var(--text-secondary);
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-subtle);
+    }
+    .back-link {
+      color: var(--accent-green);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: opacity 0.15s;
+    }
+    .back-link:hover { opacity: 0.8; }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 12px;
+    }
+    .stat-item {
+      padding: 14px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+    }
+    .stat-label {
+      font-size: 11px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 4px;
+    }
+    .stat-value {
+      font-size: 16px;
+      font-weight: 600;
       font-family: var(--mono);
     }
-    .chart-panel { height: 260px; }
-    .error { color: var(--coral); }
-    .muted { color: var(--muted); }
-    a { color: var(--teal); text-decoration: none; }
+    .stat-value.highlight {
+      color: var(--accent-green);
+      text-shadow: 0 0 12px var(--accent-green-glow);
+    }
+    .section-title {
+      font-size: 13px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 12px;
+    }
+    .exchange-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .exchange-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 14px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+    }
+    .exchange-name {
+      font-weight: 500;
+    }
+    .exchange-rate {
+      font-family: var(--mono);
+      font-weight: 500;
+    }
+    .chart-container {
+      height: 240px;
+      position: relative;
+    }
+    .error-msg {
+      padding: 20px;
+      text-align: center;
+      color: var(--accent-red);
+      background: rgba(255,82,82,0.1);
+      border: 1px solid var(--accent-red);
+      border-radius: var(--radius-md);
+    }
+    .loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 40px;
+      color: var(--text-secondary);
+    }
+    .spinner {
+      width: 20px;
+      height: 20px;
+      border: 2px solid var(--border-subtle);
+      border-top-color: var(--accent-green);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @media (max-width: 640px) {
+      body { padding: 16px; }
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    }
   </style>
 </head>
 <body>
-  <div class="shell">
-    <div class="panel header">
+  <div class="app">
+    <div class="card header">
       <div>
         <h1 id="title">合约详情</h1>
-        <div class="pill" id="updatedAt">加载中...</div>
+        <div class="badge" id="updatedAt">加载中...</div>
       </div>
-      <div class="muted"><a href="/static/index.html" target="_self">返回列表</a></div>
+      <a href="/static/index.html" class="back-link">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M19 12H5M12 19l-7-7 7-7"/>
+        </svg>
+        返回列表
+      </a>
     </div>
 
-    <div class="panel">
-      <div class="grid">
-        <div class="card"><div class="label">合约</div><div class="value" id="sym">-</div></div>
-        <div class="card"><div class="label">实际费率差（8h）</div><div class="value" id="diff">-</div></div>
-        <div class="card"><div class="label">名义费率差 ($)</div><div class="value nominal" id="nominal">-</div></div>
-        <div class="card"><div class="label">杠杆</div><div class="value" id="lev">-</div></div>
-        <div class="card"><div class="label">最佳做多</div><div class="value" id="longEx">-</div></div>
-        <div class="card"><div class="label">做多费率</div><div class="value" id="longRate">-</div></div>
-        <div class="card"><div class="label">最佳做空</div><div class="value" id="shortEx">-</div></div>
-        <div class="card"><div class="label">做空费率</div><div class="value" id="shortRate">-</div></div>
+    <div class="card">
+      <div class="stats-grid" id="statsGrid">
+        <div class="stat-item">
+          <div class="stat-label">合约</div>
+          <div class="stat-value" id="sym">-</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">费率差 (8h)</div>
+          <div class="stat-value" id="diff">-</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">名义费率差</div>
+          <div class="stat-value highlight" id="nominal">-</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">杠杆</div>
+          <div class="stat-value" id="lev">-</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">最佳做多</div>
+          <div class="stat-value" id="longEx">-</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">做多费率</div>
+          <div class="stat-value" id="longRate">-</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">最佳做空</div>
+          <div class="stat-value" id="shortEx">-</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">做空费率</div>
+          <div class="stat-value" id="shortRate">-</div>
+        </div>
       </div>
     </div>
 
-    <div class="panel">
-      <div class="label">各交易所费率</div>
-      <div class="list" id="detailList"></div>
+    <div class="card">
+      <div class="section-title">各交易所费率</div>
+      <div class="exchange-list" id="exchangeList">
+        <div class="loading"><div class="spinner"></div>加载中...</div>
+      </div>
     </div>
-    <div class="panel chart-panel">
-      <div class="label">历史资金费率差（8h）</div>
-      <canvas id="historyChart" height="220"></canvas>
+
+    <div class="card">
+      <div class="section-title">历史费率差 (8h)</div>
+      <div class="chart-container">
+        <canvas id="chart"></canvas>
+      </div>
     </div>
-    <div class="error" id="errorMsg" hidden>未找到该合约，请返回重试。</div>
+
+    <div class="error-msg" id="errorMsg" hidden>未找到该合约，请返回重试。</div>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script>
     const params = new URLSearchParams(window.location.search);
     const symbol = params.get('symbol');
-    const titleEl = document.getElementById('title');
-    const updatedAtEl = document.getElementById('updatedAt');
-    const symEl = document.getElementById('sym');
-    const diffEl = document.getElementById('diff');
-    const nominalEl = document.getElementById('nominal');
-    const levEl = document.getElementById('lev');
-    const longExEl = document.getElementById('longEx');
-    const longRateEl = document.getElementById('longRate');
-    const shortExEl = document.getElementById('shortEx');
-    const shortRateEl = document.getElementById('shortRate');
-    const detailListEl = document.getElementById('detailList');
-    const errorMsgEl = document.getElementById('errorMsg');
-    const chartEl = document.getElementById('historyChart');
-    const numberFormatter = new Intl.NumberFormat('zh-CN');
-    const timeFormatter = new Intl.DateTimeFormat('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const numFmt = new Intl.NumberFormat('zh-CN');
+    const timeFmt = new Intl.DateTimeFormat('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     let chart;
 
     async function loadDetail() {
       if (!symbol) {
-        errorMsgEl.hidden = false;
+        document.getElementById('errorMsg').hidden = false;
         return;
       }
       try {
@@ -157,75 +267,83 @@
         const rows = data.rows || [];
         const row = rows.find(r => r.unified_symbol === symbol);
         const ts = data.updated_at ? new Date(data.updated_at * 1000) : new Date();
-        updatedAtEl.textContent = `更新于 ${timeFormatter.format(ts)}`;
+        document.getElementById('updatedAt').textContent = `更新于 ${timeFmt.format(ts)}`;
+
         if (!row) {
-          errorMsgEl.hidden = false;
+          document.getElementById('errorMsg').hidden = false;
           return;
         }
-        errorMsgEl.hidden = true;
-        titleEl.textContent = `${symbol} 详情`;
-        symEl.textContent = symbol;
-        const diff = row.diff ?? 0;
-        const leverageUsed = row.leverage_used ?? 50;
-        const nominal = row.nominal_spread ?? row.nominal_funding_max_leverage ?? (diff * leverageUsed);
-        diffEl.textContent = diff.toFixed(6);
-        nominalEl.textContent = `$${numberFormatter.format(nominal)}`;
-        levEl.textContent = `${leverageUsed.toFixed(0)}x`;
-        longExEl.textContent = row.max_rate_exchange || '-';
-        longRateEl.textContent = (row.max_rate ?? 0).toFixed(6);
-        shortExEl.textContent = row.min_rate_exchange || '-';
-        shortRateEl.textContent = (row.min_rate ?? 0).toFixed(6);
-        const frag = document.createDocumentFragment();
-        const details = Array.isArray(row.details) ? row.details : [];
-        if (details.length) {
-          details.forEach(d => {
-            const item = document.createElement('div');
-            item.className = 'list-item';
-            item.innerHTML = `<span>${d.exchange}</span><span>${(d.funding_rate_8h ?? 0).toFixed(6)}</span>`;
-            frag.appendChild(item);
-          });
-        } else {
-          const empty = document.createElement('div');
-          empty.className = 'list-item';
-          empty.textContent = '暂无明细';
-          frag.appendChild(empty);
-        }
-        detailListEl.innerHTML = '';
-        detailListEl.appendChild(frag);
+        document.getElementById('errorMsg').hidden = true;
+        document.getElementById('title').textContent = `${symbol} 详情`;
+        document.getElementById('sym').textContent = symbol;
 
-        // history
+        const diff = row.diff ?? 0;
+        const lev = row.leverage_used ?? 50;
+        const nominal = row.nominal_spread ?? row.nominal_funding_max_leverage ?? (diff * lev);
+
+        document.getElementById('diff').textContent = diff.toFixed(6);
+        document.getElementById('nominal').textContent = `$${numFmt.format(nominal)}`;
+        document.getElementById('lev').textContent = `${lev.toFixed(0)}x`;
+        document.getElementById('longEx').textContent = row.min_rate_exchange || '-';
+        document.getElementById('longRate').textContent = (row.min_rate ?? 0).toFixed(6);
+        document.getElementById('shortEx').textContent = row.max_rate_exchange || '-';
+        document.getElementById('shortRate').textContent = (row.max_rate ?? 0).toFixed(6);
+
+        const details = Array.isArray(row.details) ? row.details : [];
+        const listEl = document.getElementById('exchangeList');
+        if (details.length) {
+          listEl.innerHTML = details.map(d => `
+            <div class="exchange-item">
+              <span class="exchange-name">${d.exchange}</span>
+              <span class="exchange-rate">${(d.funding_rate_8h ?? 0).toFixed(6)}</span>
+            </div>
+          `).join('');
+        } else {
+          listEl.innerHTML = '<div class="exchange-item">暂无明细</div>';
+        }
+
         const hRes = await fetch(`/api/funding/history?symbol=${encodeURIComponent(symbol)}`);
         const hData = await hRes.json();
         const history = (hData && Array.isArray(hData.history)) ? hData.history : [];
-        const labels = history.map(h => new Date((h.ts || 0) * 1000));
+        const labels = history.map(h => timeFmt.format(new Date((h.ts || 0) * 1000)));
         const dataPoints = history.map(h => h.diff ?? 0);
+
         if (chart) chart.destroy();
         if (labels.length) {
-          chart = new Chart(chartEl, {
+          chart = new Chart(document.getElementById('chart'), {
             type: 'line',
             data: {
-              labels: labels.map(d => timeFormatter.format(d)),
+              labels,
               datasets: [{
-                label: '费率差(8h)',
+                label: '费率差',
                 data: dataPoints,
-                borderColor: '#00c897',
-                backgroundColor: 'rgba(0,200,151,0.15)',
-                tension: 0.25,
+                borderColor: '#00d991',
+                backgroundColor: 'rgba(0,217,145,0.1)',
+                tension: 0.3,
                 fill: true,
+                pointRadius: 0,
               }]
             },
             options: {
+              responsive: true,
+              maintainAspectRatio: false,
               plugins: { legend: { display: false } },
               scales: {
-                x: { ticks: { maxTicksLimit: 6, color: '#93a4b8' }, grid: { color: 'rgba(255,255,255,0.05)' }},
-                y: { ticks: { color: '#93a4b8' }, grid: { color: 'rgba(255,255,255,0.05)' }}
+                x: {
+                  ticks: { maxTicksLimit: 6, color: '#5c5c6b', font: { size: 11 } },
+                  grid: { color: 'rgba(255,255,255,0.04)' }
+                },
+                y: {
+                  ticks: { color: '#5c5c6b', font: { size: 11 } },
+                  grid: { color: 'rgba(255,255,255,0.04)' }
+                }
               }
             }
           });
         }
       } catch (err) {
-        errorMsgEl.hidden = false;
-        errorMsgEl.textContent = '加载失败，请返回重试。';
+        document.getElementById('errorMsg').hidden = false;
+        document.getElementById('errorMsg').textContent = '加载失败，请稍后重试。';
         console.error(err);
       }
     }
