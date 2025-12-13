@@ -1,21 +1,25 @@
 import logging
 import os
 from typing import List, Optional
+from urllib.parse import quote
 
 import httpx
 
 from core.models import ExchangeName, FundingRateItem
 
-BINANCE_URLS = [
-    "https://www.binance.com/fapi/v1/premiumIndex",
-    "https://fapi.binance.com/fapi/v1/premiumIndex",
-    "https://fapi1.binance.com/fapi/v1/premiumIndex",
-    "https://fapi2.binance.com/fapi/v1/premiumIndex",
-    "https://fapi3.binance.com/fapi/v1/premiumIndex",
-    "https://fapi4.binance.com/fapi/v1/premiumIndex",
+BINANCE_API_PATH = "/fapi/v1/premiumIndex"
+BINANCE_HOSTS = [
+    "www.binance.com",
+    "fapi.binance.com",
+    "fapi1.binance.com",
+    "fapi2.binance.com",
+]
+PROXY_TEMPLATES = [
+    "https://api.allorigins.win/raw?url={url}",
+    "https://corsproxy.io/?{url}",
 ]
 BINANCE_QUOTE = "USDT"
-REQUEST_TIMEOUT = 5.0
+REQUEST_TIMEOUT = 8.0
 # Binance USDT-M 通常支持最高 125x，作为无权限下的保守估计
 BINANCE_DEFAULT_LEVERAGE = 125.0
 
@@ -38,22 +42,34 @@ def binance_symbol_to_unified(symbol: str) -> Optional[str]:
 async def fetch_binance_funding() -> List[FundingRateItem]:
     """
     Fetch funding rates from Binance USDT-M futures.
-    Tries multiple endpoints for better availability.
+    Tries direct access first, then falls back to proxy services.
     """
     logger.info("Fetching Binance funding rates")
     items: List[FundingRateItem] = []
     data = None
 
-    async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
-        for url in BINANCE_URLS:
+    urls_to_try = []
+    for host in BINANCE_HOSTS:
+        urls_to_try.append(f"https://{host}{BINANCE_API_PATH}")
+    for host in BINANCE_HOSTS[:2]:
+        direct_url = f"https://{host}{BINANCE_API_PATH}"
+        for proxy_tpl in PROXY_TEMPLATES:
+            urls_to_try.append(proxy_tpl.format(url=quote(direct_url, safe="")))
+
+    async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT, follow_redirects=True) as client:
+        for url in urls_to_try:
             try:
                 resp = await client.get(url)
                 resp.raise_for_status()
                 data = resp.json()
-                logger.info("Binance fetch succeeded from %s", url.split("/")[2])
-                break
+                if isinstance(data, list) and len(data) > 0:
+                    logger.info("Binance fetch succeeded: %s (%d items)", url[:60], len(data))
+                    break
+                else:
+                    logger.debug("Binance URL returned invalid data: %s", url[:60])
+                    data = None
             except Exception as exc:
-                logger.debug("Binance endpoint %s failed: %s", url, exc)
+                logger.debug("Binance endpoint failed %s: %s", url[:50], exc)
                 continue
 
     if not data:
