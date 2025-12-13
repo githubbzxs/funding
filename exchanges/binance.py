@@ -14,12 +14,15 @@ BINANCE_HOSTS = [
     "fapi1.binance.com",
     "fapi2.binance.com",
 ]
-PROXY_TEMPLATES = [
-    "https://api.allorigins.win/raw?url={url}",
-    "https://corsproxy.io/?{url}",
-]
+# User can set BINANCE_PROXY_URL env var to use a custom proxy
+# Example: https://your-worker.workers.dev/?url=
+BINANCE_PROXY_URL = os.getenv("BINANCE_PROXY_URL", "")
 BINANCE_QUOTE = "USDT"
 REQUEST_TIMEOUT = 8.0
+HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+    "Accept": "application/json",
+}
 # Binance USDT-M 通常支持最高 125x，作为无权限下的保守估计
 BINANCE_DEFAULT_LEVERAGE = 125.0
 
@@ -42,7 +45,7 @@ def binance_symbol_to_unified(symbol: str) -> Optional[str]:
 async def fetch_binance_funding() -> List[FundingRateItem]:
     """
     Fetch funding rates from Binance USDT-M futures.
-    Tries direct access first, then falls back to proxy services.
+    Tries direct access first, then custom proxy if configured.
     """
     logger.info("Fetching Binance funding rates")
     items: List[FundingRateItem] = []
@@ -50,14 +53,16 @@ async def fetch_binance_funding() -> List[FundingRateItem]:
     errors = []
 
     urls_to_try = []
+    # Try direct URLs first
     for host in BINANCE_HOSTS:
         urls_to_try.append(f"https://{host}{BINANCE_API_PATH}")
-    for host in BINANCE_HOSTS[:2]:
-        direct_url = f"https://{host}{BINANCE_API_PATH}"
-        for proxy_tpl in PROXY_TEMPLATES:
-            urls_to_try.append(proxy_tpl.format(url=quote(direct_url, safe="")))
+    # If proxy configured, add proxy URLs
+    if BINANCE_PROXY_URL:
+        for host in BINANCE_HOSTS[:2]:
+            direct_url = f"https://{host}{BINANCE_API_PATH}"
+            urls_to_try.append(f"{BINANCE_PROXY_URL}{quote(direct_url, safe='')}")
 
-    async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT, follow_redirects=True) as client:
+    async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT, follow_redirects=True, headers=HEADERS) as client:
         for url in urls_to_try:
             try:
                 resp = await client.get(url)
@@ -66,13 +71,14 @@ async def fetch_binance_funding() -> List[FundingRateItem]:
 
                 # Handle proxy wrapper formats
                 if isinstance(raw_data, dict):
-                    # allorigins returns {"contents": "..."}
                     if "contents" in raw_data:
                         import json
                         try:
                             data = json.loads(raw_data["contents"])
                         except:
                             data = None
+                    elif "data" in raw_data and isinstance(raw_data["data"], list):
+                        data = raw_data["data"]
                     else:
                         data = None
                 elif isinstance(raw_data, list):
