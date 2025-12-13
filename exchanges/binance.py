@@ -7,6 +7,7 @@ import httpx
 from core.models import ExchangeName, FundingRateItem
 
 BINANCE_URLS = [
+    "https://www.binance.com/fapi/v1/premiumIndex",
     "https://fapi.binance.com/fapi/v1/premiumIndex",
     "https://fapi1.binance.com/fapi/v1/premiumIndex",
     "https://fapi2.binance.com/fapi/v1/premiumIndex",
