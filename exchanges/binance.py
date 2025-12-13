@@ -62,7 +62,24 @@ async def fetch_binance_funding() -> List[FundingRateItem]:
             try:
                 resp = await client.get(url)
                 resp.raise_for_status()
-                data = resp.json()
+                raw_data = resp.json()
+
+                # Handle proxy wrapper formats
+                if isinstance(raw_data, dict):
+                    # allorigins returns {"contents": "..."}
+                    if "contents" in raw_data:
+                        import json
+                        try:
+                            data = json.loads(raw_data["contents"])
+                        except:
+                            data = None
+                    else:
+                        data = None
+                elif isinstance(raw_data, list):
+                    data = raw_data
+                else:
+                    data = None
+
                 if isinstance(data, list) and len(data) > 0:
                     logger.info("Binance fetch succeeded: %s (%d items)", url[:60], len(data))
                     break
