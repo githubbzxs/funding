@@ -14,12 +14,15 @@ DEFAULT_LEVERAGE = 50.0
 EXCHANGE_CACHE: dict[str, list[FundingRateItem]] = {}
 
 
-async def collect_all() -> list[FundingRateItem]:
+async def collect_all() -> tuple[list[FundingRateItem], dict]:
+    """返回 (items, fetch_status)"""
     exchanges = [("BINANCE", fetch_binance_funding()), ("OKX", fetch_okx_funding())]
     coros = [c for _, c in exchanges]
     results = await asyncio.gather(*coros, return_exceptions=True)
 
     items: list[FundingRateItem] = []
+    fetch_status: dict[str, str] = {}
+
     for (name, _), result in zip(exchanges, results):
         if isinstance(result, BaseException):
             logger.error(
@@ -28,6 +31,7 @@ async def collect_all() -> list[FundingRateItem]:
                 result,
                 exc_info=(type(result), result, result.__traceback__),
             )
+            fetch_status[name] = f"error: {type(result).__name__}"
             cached = EXCHANGE_CACHE.get(name, [])
             if cached:
                 logger.info("Using cached %d items for %s due to error", len(cached), name)
@@ -37,6 +41,7 @@ async def collect_all() -> list[FundingRateItem]:
         current = result or []
         logger.info("%s returned %d items", name, len(current))
         if not current:
+            fetch_status[name] = "empty"
             cached = EXCHANGE_CACHE.get(name, [])
             if cached:
                 logger.info("Using cached %d items for %s due to empty fetch", len(cached), name)
@@ -45,12 +50,13 @@ async def collect_all() -> list[FundingRateItem]:
                 logger.warning("No items for %s and no cache available", name)
             continue
 
+        fetch_status[name] = f"ok: {len(current)}"
         EXCHANGE_CACHE[name] = current
         items.extend(current)
 
     per_exchange = Counter(i.exchange for i in items)
     logger.info("Collected %d total funding items (per exchange: %s)", len(items), dict(per_exchange))
-    return items
+    return items, fetch_status
 
 
 def build_ranking(items: Iterable[FundingRateItem]) -> list[FundingDiffRow]:

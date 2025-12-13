@@ -45,7 +45,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 async def _refresh_cache() -> list[FundingDiffRow]:
     started_at = time.time()
-    items = await collect_all()
+    items, fetch_status = await collect_all()
     rows = build_ranking(items)
     now = time.time()
     exchange_item_counts = Counter(item.exchange for item in items)
@@ -57,6 +57,7 @@ async def _refresh_cache() -> list[FundingDiffRow]:
         "exchange_item_counts": dict(exchange_item_counts),
         "row_total": len(rows),
         "refresh_ms": int((now - started_at) * 1000),
+        "fetch_status": fetch_status,
     }
     CACHE["last_error"] = None
     CACHE["last_error_at"] = None

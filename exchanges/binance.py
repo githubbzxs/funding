@@ -47,6 +47,7 @@ async def fetch_binance_funding() -> List[FundingRateItem]:
     logger.info("Fetching Binance funding rates")
     items: List[FundingRateItem] = []
     data = None
+    errors = []
 
     urls_to_try = []
     for host in BINANCE_HOSTS:
@@ -66,14 +67,23 @@ async def fetch_binance_funding() -> List[FundingRateItem]:
                     logger.info("Binance fetch succeeded: %s (%d items)", url[:60], len(data))
                     break
                 else:
+                    err_msg = f"{url[:40]}... invalid response"
+                    errors.append(err_msg)
                     logger.debug("Binance URL returned invalid data: %s", url[:60])
                     data = None
+            except httpx.ConnectError as e:
+                errors.append(f"{url[:40]}... connect_error")
+                logger.debug("Binance connect error %s: %s", url[:40], e)
+            except httpx.TimeoutException as e:
+                errors.append(f"{url[:40]}... timeout")
+                logger.debug("Binance timeout %s: %s", url[:40], e)
             except Exception as exc:
+                errors.append(f"{url[:40]}... {type(exc).__name__}")
                 logger.debug("Binance endpoint failed %s: %s", url[:50], exc)
                 continue
 
     if not data:
-        logger.warning("All Binance endpoints failed")
+        logger.warning("All Binance endpoints failed: %s", "; ".join(errors[:5]))
         return items
 
     for entry in data:
