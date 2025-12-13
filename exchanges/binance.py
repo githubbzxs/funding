@@ -1,11 +1,18 @@
 import logging
+import os
 from typing import List, Optional
 
 import httpx
 
 from core.models import ExchangeName, FundingRateItem
 
-BINANCE_URL = "https://fapi.binance.com/fapi/v1/premiumIndex"
+BINANCE_URLS = [
+    "https://fapi.binance.com/fapi/v1/premiumIndex",
+    "https://fapi1.binance.com/fapi/v1/premiumIndex",
+    "https://fapi2.binance.com/fapi/v1/premiumIndex",
+    "https://fapi3.binance.com/fapi/v1/premiumIndex",
+    "https://fapi4.binance.com/fapi/v1/premiumIndex",
+]
 BINANCE_QUOTE = "USDT"
 REQUEST_TIMEOUT = 5.0
 # Binance USDT-M 通常支持最高 125x，作为无权限下的保守估计
@@ -30,16 +37,26 @@ def binance_symbol_to_unified(symbol: str) -> Optional[str]:
 async def fetch_binance_funding() -> List[FundingRateItem]:
     """
     Fetch funding rates from Binance USDT-M futures.
+    Tries multiple endpoints for better availability.
     """
     logger.info("Fetching Binance funding rates")
     items: List[FundingRateItem] = []
-    try:
-        async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
-            resp = await client.get(BINANCE_URL)
-            resp.raise_for_status()
-            data = resp.json()
-    except Exception as exc:
-        logger.warning("Failed to fetch Binance funding rates: %s", exc)
+    data = None
+
+    async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT) as client:
+        for url in BINANCE_URLS:
+            try:
+                resp = await client.get(url)
+                resp.raise_for_status()
+                data = resp.json()
+                logger.info("Binance fetch succeeded from %s", url.split("/")[2])
+                break
+            except Exception as exc:
+                logger.debug("Binance endpoint %s failed: %s", url, exc)
+                continue
+
+    if not data:
+        logger.warning("All Binance endpoints failed")
         return items
 
     for entry in data:
